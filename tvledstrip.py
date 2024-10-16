@@ -55,6 +55,10 @@ class TVLedStrip:
         self.neo.write()
 
     def toggle(self):
+        # if the last brightness value is zero, there is no sense in toggling
+        # the user has to turn the knob to switch the light on
+        if self.brightness == 0 and not self.is_on:
+            return
         self.is_on = not self.is_on
         if self.is_on:
             self.dim(self.brightness)
@@ -63,17 +67,30 @@ class TVLedStrip:
             self.dim(0)
             self.led.dim(PowerLED.SLEEP)
 
-    def step(self, direction):
+    def setabsolute(self, value):
+        # this is in absolute encoder ranges
+        self.brightness = min(100, max(0, value * self.steps))
+        # turn it on, if the brightness increases and it was off
+        if not self.is_on and value > 0:
+            self.toggle()
+        # if brightness gets turned to zero toggling will also
+        # dim the power LED
+        if self.is_on and value == 0:
+            self.toggle()
+        else:
+            self.dim(self.brightness)
+
+    def step(self, direction, count):
+        # this would be in relarive steps
         if not self.is_on:
             self.toggle()
-            return
-        else:
-            if direction == TVLedStrip.UP:
-                self.brightness += self.steps
-                if self.brightness >= self.brightness_max:
-                    self.brightness = self.brightness_max
-            elif direction == TVLedStrip.DOWN:
-                self.brightness -= self.steps
-                if self.brightness < 0:
-                    self.brightness = 0
-            self.dim(self.brightness)
+            if count > 1:
+                count -= 1
+            else:
+                return
+        if direction == TVLedStrip.UP:
+            self.brightness += self.steps * count
+        elif direction == TVLedStrip.DOWN:
+            self.brightness -= self.steps * count
+        self.brightness = min(100, max(0, self.brightness))
+        self.dim(self.brightness)
