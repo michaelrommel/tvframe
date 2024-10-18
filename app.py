@@ -3,6 +3,7 @@ from encoder import Encoder
 from button import Button
 from tvledstrip import TVLedStrip
 from time import ticks_ms, ticks_diff
+from touch import PIOCap
 import asyncio
 
 # GPIO definitions, where on the Pico W the individual
@@ -17,8 +18,8 @@ pin_neo = 28
 last_press = ticks_ms()
 last_release = ticks_ms()
 # values in ms for debouncing and long press detection
-debounce = 100
-long_press = 1000
+debounce = 80
+long_press = 750
 
 # initialisation tv frame
 tvled = TVLedStrip(pin_neo, pin_led)
@@ -72,13 +73,25 @@ async def main():
     global pin_x
     global pin_y
 
+    touched = False
+
     # initialisation rotary encoder
     rotary = Encoder(
         pin_x, pin_y, v=10, vmin=0, vmax=20, div=2, callback=rotary_callback
     )
 
+    touch_button = PIOCap(0, 21, 20, max_count=(10_000), count_freq=10_000_000)
+
     while True:
-        await asyncio.sleep(1)
+        touchState = True if (10_000 - touch_button.getCap()) > 400 else False
+        if touchState != touched:
+            touched = touchState
+            if touched:
+                switch_callback(Button.SW_PRESS)
+            else:
+                switch_callback(Button.SW_RELEASE)
+
+        await asyncio.sleep_ms(50)
 
 
 try:
