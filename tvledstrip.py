@@ -21,7 +21,7 @@ class TVLedStrip:
     UP = 1
     DOWN = 2
 
-    def __init__(self, neo, led):
+    def __init__(self, pin_neo, led):
         # how many brightness percent to in-/decrease per turn
         self.steps = 5
         # how long is the strip around the tv frame
@@ -37,7 +37,7 @@ class TVLedStrip:
         self.max = (255, 140, 120)
 
         # initialize the strip
-        self.neo_pin = Pin(neo, Pin.OUT)
+        self.neo_pin = Pin(pin_neo, Pin.OUT)
         self.neo = NeoPixel(self.neo_pin, self.pixelcount)
         self.dim(self.brightness)
 
@@ -51,8 +51,12 @@ class TVLedStrip:
         return new
 
     def dim(self, value):
-        self.neo.fill(self.get_rgb_percent(value))
+        pix = self.get_rgb_percent(value)
+        # print(f"filling {pix}")
+        self.neo.fill(pix)
+        # print("buffered")
         self.neo.write()
+        # print("written")
 
     def toggle(self):
         # if the last brightness value is zero, there is no sense in toggling
@@ -61,9 +65,11 @@ class TVLedStrip:
             return
         self.is_on = not self.is_on
         if self.is_on:
+            # print(f"turning on {self.brightness}")
             self.dim(self.brightness)
             self.led.dim(PowerLED.FULL)
         else:
+            # print("turning off")
             self.dim(0)
             self.led.dim(PowerLED.SLEEP)
 

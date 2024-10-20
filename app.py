@@ -34,12 +34,16 @@ async def process_button(button):
     global tvled
     async for press in button:
         if press == Button.SW_SHORT:
+            # print("button short")
             tvled.toggle()
         elif press == Button.SW_LONG:
+            # print("button long")
             tvled.toggle()
         elif press == PIOCap.TOUCH_SHORT:
+            # print("touch short")
             tvled.toggle()
         elif press == PIOCap.TOUCH_LONG:
+            # print("touch long")
             tvled.toggle()
         else:
             print(f"unknown button event {press}")
@@ -56,8 +60,9 @@ async def main():
     button = Button(pin_sw)
     asyncio.create_task(process_button(button))
 
+    # initialisation of the PIO state machine 1 for the touch detection
     touch_button = PIOCap(
-        1, pin_t_out, pin_t_in, max_count=(10_000), count_freq=10_000_000
+        0, pin_t_out, pin_t_in, max_count=(10_000), count_freq=10_000_000
     )
     asyncio.create_task(process_button(touch_button))
 
