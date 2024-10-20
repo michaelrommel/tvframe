@@ -81,7 +81,7 @@ class TVLedStrip:
             self.dim(self.brightness)
 
     def step(self, direction, count):
-        # this would be in relarive steps
+        # this would be in relative steps
         if not self.is_on:
             self.toggle()
             if count > 1:

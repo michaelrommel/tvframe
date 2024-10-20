@@ -19,24 +19,13 @@
 
 import asyncio
 from machine import Pin
-from select import poll, POLLIN
-
-
-def ready(tsf, poller):
-    r = (tsf, POLLIN)
-    poller.register(*r)
-
-    def is_rdy():
-        return r in poller.ipoll(0)
-
-    return is_rdy
 
 
 class Encoder:
     def __init__(
         self,
-        pin_x,
-        pin_y,
+        pin_clk,
+        pin_dt,
         v=0,
         div=1,
         vmin=None,
@@ -46,10 +35,10 @@ class Encoder:
         args=(),
         delay=100,
     ):
-        self._pin_x = pin_x
-        self._pin_y = pin_y
-        self._x = pin_x()
-        self._y = pin_y()
+        self._pin_x = Pin(pin_clk, Pin.IN)
+        self._pin_y = Pin(pin_dt, Pin.IN)
+        self._x = self._pin_x()
+        self._y = self._pin_y()
         self._v = v * div  # Initialise hardware value
         self._cv = v  # Current (divided) value
         self.delay = delay  # Pause (ms) for motion to stop/limit callback frequency
@@ -58,14 +47,13 @@ class Encoder:
         if ((vmin is not None) and v < vmin) or ((vmax is not None) and v > vmax):
             raise ValueError("Incompatible args: must have vmin <= v <= vmax")
         self._tsf = asyncio.ThreadSafeFlag()
-        self._tsf_ready = ready(self._tsf, poll())  # Create a ready function
         trig = Pin.IRQ_RISING | Pin.IRQ_FALLING
         try:
-            xirq = pin_x.irq(trigger=trig, handler=self._x_cb, hard=True)
-            yirq = pin_y.irq(trigger=trig, handler=self._y_cb, hard=True)
+            xirq = self._pin_x.irq(trigger=trig, handler=self._x_cb, hard=True)
+            yirq = self._pin_y.irq(trigger=trig, handler=self._y_cb, hard=True)
         except TypeError:  # hard arg is unsupported on some hosts
-            xirq = pin_x.irq(trigger=trig, handler=self._x_cb)
-            yirq = pin_y.irq(trigger=trig, handler=self._y_cb)
+            xirq = self._pin_x.irq(trigger=trig, handler=self._x_cb)
+            yirq = self._pin_y.irq(trigger=trig, handler=self._y_cb)
         asyncio.create_task(self._run(vmin, vmax, div, mod, callback, args))
 
     # Hardware IRQ's. Duration 36μs on Pyboard 1 ~50μs on ESP32.
@@ -90,8 +78,7 @@ class Encoder:
         plcv = pcv  # Previous value after limits applied
         delay = self.delay
         while True:
-            if delay > 0 and self._tsf_ready():  # Ensure ThreadSafeFlag is clear
-                await self._tsf.wait()
+            self._tsf.clear()
             await self._tsf.wait()
             await asyncio.sleep_ms(delay)  # Wait for motion to stop.
             hv = self._v  # Sample hardware (atomic read).
@@ -115,7 +102,7 @@ class Encoder:
     def __aiter__(self):
         return self
 
-    def __anext__(self):
+    async def __anext__(self):
         await self._trig.wait()
         self._trig.clear()
         return self._cv
