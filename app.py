@@ -24,11 +24,6 @@ pin_t_in = 20
 tvled = TVLedStrip(pin_neo, pin_led)
 
 
-def rotary_callback(value, delta):
-    global tvled
-    tvled.setabsolute(value)
-
-
 async def process_rotary(rotary):
     global tvled
     async for value in rotary:
@@ -67,12 +62,11 @@ async def main():
     asyncio.create_task(process_button(touch_button))
 
     # initialisation rotary encoder
-    # pin_clk, pin_dt, v=10, vmin=0, vmax=20, div=2, callback=rotary_callback
     rotary = Encoder(pin_clk, pin_dt, v=10, vmin=0, vmax=20, div=2)
     asyncio.create_task(process_rotary(rotary))
 
     while True:
-        await asyncio.sleep_ms(500)
+        await asyncio.sleep_ms(10_000)
 
 
 try:
